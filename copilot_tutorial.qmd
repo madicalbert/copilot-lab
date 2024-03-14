@@ -1,0 +1,105 @@
+---
+title: "Co-pilot Demo"
+author: "Madi Calbert"
+format: html
+editor: visual
+---
+
+# Setup
+
+Copilot give prompts to text generation models to help them generate code. This is a demo of how to use it in R. 
+
+Copilot is a plugin for Visual Studio Code. You can install it by going to the extensions tab and searching for "GitHub Copilot".
+
+## Load in seeds data
+```{r}
+library(tidyverse)
+
+# Load in seeds .txt data using read_tsv() from the data folder
+seeds <- read_tsv("data/seeds_dataset.txt", col_names = FALSE)
+
+# Load in seeds .txt data using read_tsv() from the data folderm and assign column names. Change -999 to NA. 
+seeds <- read_tsv("data/seeds_dataset.txt", col_names = c("area", "perimeter", "compactness", "length", "width", "asymmetry", "groove", "species"), na = "-999") %>%
+  mutate(species = case_when(species == 1 ~ "Kama", species == 2 ~ "Rosa", species == 3 ~ "Canadian"))
+
+```
+
+
+## Exploratory visuals
+
+Let's make some histograms of the seeds data to see what it looks like.
+```{r}
+# Make a histogram of the numeric columns in the seeds data 
+seeds %>%
+  select_if(is.numeric) %>%
+  pivot_longer(cols = everything()) %>%
+  ggplot(aes(x = value)) +
+  geom_histogram() +
+  facet_wrap(~name, scales = "free") +
+  theme_minimal()
+```
+
+
+## Pseudocode helps copilot think about suggestions 
+
+Pseudocode plan:
+
+We need to remove nas
+Scale the numeric seeds data
+Use NbClust to get optimal clusters
+Make a knee plot
+Use kmeans to cluster the data
+Plot the data with the clusters 
+
+```{r}
+# Remove nas from the seeds data and save as a new object
+seeds_clean <- seeds %>%
+  drop_na()
+
+# Scale the numeric columns in the seeds_clean data and save as a new object
+seeds_scaled <- seeds_clean %>%
+  select(-species) %>%
+  scale()
+
+# Use NbClust to get the optimal number of clusters for the seeds_scaled data
+library(NbClust)
+nb <- NbClust(seeds_scaled, distance = "euclidean", min.nc = 2, max.nc = 10, method = "kmeans")
+
+# Make a knee plot of the seeds_scaled data
+library(factoextra)
+# fviz_nbclust(nb)
+
+# Make a knee plot with the scaled data for kmeans and a max of 10 clusters
+fviz_nbclust(seeds_scaled, kmeans, method = "wss", k.max = 10)
+
+# Use kmeans to cluster the seeds_scaled data into 3 clusters and save as a new object
+seeds_kmeans <- kmeans(seeds_scaled, centers = 3)
+
+# Plot the seeds data with the clusters from seeds_kmeans
+seeds_clean %>%
+  mutate(cluster = seeds_kmeans$cluster) %>%
+  ggplot(aes(x = length, y = width, color = factor(cluster))) +
+  geom_point() +
+  theme_minimal()
+
+# q: how does kmeans clustering work 
+# a: kmeans is a method of vector quantization, originally from signal processing, that aims to partition n observations into k clusters in which each observation belongs to the cluster with the nearest mean, serving as a prototype of the cluster.
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
